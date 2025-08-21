@@ -1,3 +1,17 @@
+@use "./styles/reset.scss";
+
+// Hamburger variables must be defined before importing the library
+$hamburger-padding-x: 10px;
+$hamburger-padding-y: 10px;
+$hamburger-layer-width: 20px;
+$hamburger-layer-height: 4px;
+$hamburger-layer-spacing: 4px;
+$hamburger-layer-color: gray;
+$hamburger-layer-border-radius: 4px;
+$hamburger-hover-opacity: 0.7;
+$hamburger-active-layer-color: gray;
+
+@import "hamburgers/_sass/hamburgers/hamburgers";
 /* You can add global styles to this file, and also import other style files */
 
 * {

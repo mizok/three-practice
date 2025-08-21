@@ -1,127 +1,92 @@
 import {
   Component,
-  ElementRef,
-  viewChild,
-  afterNextRender,
+  OnInit,
   OnDestroy,
+  ViewChild,
+  ViewChildren,
+  ElementRef,
+  QueryList,
   AfterViewInit,
+  HostListener,
 } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import * as THREE from 'three';
+import { RouterModule, RouterOutlet } from '@angular/router';
+import { CATALOGUE } from './catalogue';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-root',
   standalone: true,
+  imports: [RouterOutlet, CommonModule, RouterModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
-export class AppComponent implements AfterViewInit, OnDestroy {
-  canvasRef = viewChild<ElementRef<HTMLCanvasElement>>('canvas');
+export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
+  protected readonly catalogue = CATALOGUE;
 
-  private scene!: THREE.Scene;
-  private camera!: THREE.PerspectiveCamera;
-  private renderer!: THREE.WebGLRenderer;
-  private cube!: THREE.Mesh;
-  private animationId: number = 0;
-  private frameCount = 0;
+  // 狀態變數
+  isTogglerActive = false;
+  isMenuTopShaded = false;
+  isMenuBotShaded = false;
 
-  ngAfterViewInit(): void {
-    this.initThreeJS();
-    this.animate();
+  @ViewChild('menu') menu!: ElementRef<HTMLElement>;
+  @ViewChildren('menuInner') menuInner!: QueryList<ElementRef<HTMLElement>>;
+
+  ngOnInit() {
+    // 移到 AfterViewInit
   }
 
-  ngOnDestroy(): void {
-    if (this.animationId) {
-      cancelAnimationFrame(this.animationId);
-    }
-    if (this.renderer) {
-      this.renderer.dispose();
-    }
+  ngAfterViewInit() {
+    this.initMenuScroll();
   }
 
-  private initThreeJS(): void {
-    const canvas = this.canvasRef()?.nativeElement;
-    if (!canvas) return;
+  ngOnDestroy() {
+    // 不再需要清理事件監聽器
+  }
 
-    // 建立場景
-    this.scene = new THREE.Scene();
+  // 切換器點擊事件
+  protected onTogglerClick() {
+    this.isTogglerActive = !this.isTogglerActive;
+  }
 
-    // 建立相機
-    this.camera = new THREE.PerspectiveCamera(
-      75, // field of view
-      window.innerWidth / window.innerHeight, // aspect ratio
-      0.1, // near plane
-      1000 // far plane
-    );
+  // 選單連結點擊事件
+  protected onMenuLinkClick() {
+    this.isTogglerActive = false;
+  }
 
-    // 建立渲染器
-    this.renderer = new THREE.WebGLRenderer({
-      canvas: canvas,
-      antialias: true,
+  // 選單滾動事件
+  protected onMenuScroll(event: Event) {
+    const target = event.target as HTMLElement;
+    const menuElement = this.menu?.nativeElement;
+
+    if (!target || !menuElement) return;
+
+    const scrollTop = target.scrollTop;
+    this.isMenuTopShaded = scrollTop > 0;
+    this.isMenuBotShaded =
+      target.scrollHeight - target.getBoundingClientRect().height - scrollTop >
+      0;
+  }
+
+  // 視窗大小調整事件
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.updateMenuShadows();
+  }
+
+  private initMenuScroll() {
+    this.updateMenuShadows();
+  }
+
+  private updateMenuShadows() {
+    const inner = this.menuInner?.toArray();
+    if (!inner?.length) return;
+
+    inner.forEach((elementRef) => {
+      const el = elementRef.nativeElement;
+      const scrollTop = el.scrollTop;
+      this.isMenuTopShaded = scrollTop > 0;
+      this.isMenuBotShaded =
+        el.scrollHeight - el.getBoundingClientRect().height - scrollTop > 0;
     });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setClearColor(0x222222);
-
-    // 建立一個基本的立方體
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    this.cube = new THREE.Mesh(geometry, material);
-    this.cube.position.set(1, 0, 0); // 初始位置
-    this.scene.add(this.cube);
-
-    // 設置相機位置
-    this.camera.position.z = 5;
-
-    // 監聽視窗大小變化
-    window.addEventListener('resize', () => this.onWindowResize());
-  }
-
-  private animate(): void {
-    const peroid = 5000; // 旋轉周期，單位為毫秒
-    const fps = 60; // frames per second
-    const delta = 1000 / fps; // time per frame in milliseconds
-    const fullRound = 2 * Math.PI;
-    const rotationSpeed = fullRound / peroid; // radians per millisecond
-    const rotationPerFrame = rotationSpeed * delta; // radians per frame
-    const r = 3;
-
-    this.cube.position.x = r * Math.cos(rotationPerFrame * this.frameCount);
-    this.cube.position.z = r * Math.sin(rotationPerFrame * this.frameCount);
-    // calculate quaternion using cross product for tangent direction
-    const vectorOfPosition = this.cube.position.clone();
-    const tangentDirection = vectorOfPosition
-      .clone()
-      .cross(new THREE.Vector3(0, 1, 0))
-      .normalize();
-
-    // 立方體預設前方向是 -Z 軸
-    const defaultForward = new THREE.Vector3(0, 0, -1);
-
-    // 用 setFromUnitVectors 直接計算從預設方向到目標方向的四元數
-    const quaternion = new THREE.Quaternion().setFromUnitVectors(
-      defaultForward,
-      tangentDirection
-    );
-
-    this.cube.quaternion.set(
-      quaternion.x,
-      quaternion.y,
-      quaternion.z,
-      quaternion.w
-    );
-
-    this.frameCount++;
-    this.animationId = requestAnimationFrame(() => this.animate());
-
-    // 渲染場景
-    this.renderer.render(this.scene, this.camera);
-  }
-
-  private onWindowResize(): void {
-    if (!this.camera || !this.renderer) return;
-
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 }
