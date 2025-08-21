@@ -15,4 +15,12 @@ export const CATALOGUE: CatalogueItem[] = [
     title: 'Quaternion Revolution',
     description: 'Explore the fascinating world of quaternion rotation.',
   },
+  {
+    path: 'tween-example',
+    loadComponent: () =>
+      import('./tween-example/tween-example.component').then(
+        (c) => c.TweenExampleComponent
+      ),
+    title: 'Tween Example',
+  },
 ];
