@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { Observable, switchMap } from 'rxjs';
 import * as THREE from 'three';
+import { gsap } from 'gsap';
 
 @Component({
   selector: 'app-tween-example',
@@ -188,5 +189,25 @@ export class TweenExampleComponent implements AfterViewInit, OnDestroy {
     });
 
     return observable;
+  }
+
+  private moveByGSAP(
+    position: THREE.Vector3,
+    duration: number,
+    ease: string = 'power2.inOut'
+  ): Observable<null> {
+    return new Observable<null>((subscriber) => {
+      gsap.to(this.cube.position, {
+        x: position.x,
+        y: position.y,
+        z: position.z,
+        duration: duration / 1000, // GSAP 使用秒為單位
+        ease: ease,
+        onComplete: () => {
+          subscriber.next(null);
+          subscriber.complete();
+        },
+      });
+    });
   }
 }
